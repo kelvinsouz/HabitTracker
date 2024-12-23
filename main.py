@@ -51,7 +51,13 @@ class MainWindow(QMainWindow):
 
         self.initUI()
 
+
     def initUI(self):
+
+        # Definindo funções aos botões, e double click na lista.
+        self.lista.itemDoubleClicked.connect(self.get_name)
+        self.botaoadicionar.clicked.connect(self.addlistaitem)
+        self.botaodeletar.clicked.connect(self.deletelistaitem)
 
 
         # Style da Label
@@ -59,18 +65,20 @@ class MainWindow(QMainWindow):
             background-color: white;
             color: black;
             border: 2px solid black;
-            border-radius: 10px;
+            border-radius: 5px;
             font-size: 20px;
             font-weight: bold; 
             word-wrap: break-word;        
         """)
 
-        descricao = """
+
+        # Texto padrão da label
+        textopadrao = f"""
         <p style=
         "font-size: 24px; 
         font-weight: bold; 
         color: black;">
-        Título da Página
+        Exemplo de título
         </p>
         <br>
         <p style=
@@ -78,13 +86,17 @@ class MainWindow(QMainWindow):
         color: lightgray;
         text-align: left;
         margin: 10px;">
-        Sua descrição aqui!
+        Sua descrição aqui
         </p>
-        
         """
-        self.labelprincipal.setText(descricao)
+
+
+        self.labelprincipal.setText(textopadrao)
         self.labelprincipal.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
         self.labelprincipal.setWordWrap(True)
+
+
+        #region
 
         # Criando layout de botões
         layoutbotoes = QHBoxLayout()
@@ -125,10 +137,32 @@ class MainWindow(QMainWindow):
         widgetcentral.setLayout(layoutzao)
         self.setCentralWidget(widgetcentral)
 
+        #endregion
 
-        # Definindo funções aos botões
-        self.botaoadicionar.clicked.connect(self.addlistaitem)
-        self.botaodeletar.clicked.connect(self.deletelistaitem)
+    def get_name(self, item):
+        # Pega o nome doque foi double clickado
+        # Faz uma nova descrição, com oque foi double clickado
+        # Por fim, seta o texto atualizado pra label
+        nomeatividade = item.text()
+        print(f"{nomeatividade}")
+
+        updatedescricao = f"""
+        <p style=
+        "font-size: 24px; 
+        font-weight: bold; 
+        color: black;">
+        {nomeatividade}
+        </p>
+        <br>
+        <p style=
+        "font-size: 16px; 
+        color: lightgray;
+        text-align: left;
+        margin: 10px;">
+        Sua descrição aqui!
+        </p>
+        """
+        self.labelprincipal.setText(updatedescricao)
 
 
     # Função adicionar lista
