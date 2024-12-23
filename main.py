@@ -10,15 +10,16 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Janela teste")
-        self.setGeometry(180, 150, 900, 600)
+        self.setGeometry(100, 150, 900, 600)
 
 
-        # Criando itens (Label, lista 1/2, caixa de texto, botão)
-        self.labeltitulo = QLabel("Olá", self)
+        # Criando itens (Label, lista 1/2, caixa de texto, botões)
+        self.labelprincipal = QLabel("Aqui ficará as atividades", self)
         self.listatexto = QLineEdit(self)
         self.lista = QListWidget(self)
         self.lista2 = QListWidget(self)
         self.botaoadicionar = QPushButton("Adicionar...")
+        self.botaodeletar = QPushButton("Deletar...")
         self.botaoiniciar = QPushButton("Iniciar")
         self.botaoparar = QPushButton("Parar")
         self.botaoreiniciar = QPushButton("Reiniciar")
@@ -34,34 +35,58 @@ class MainWindow(QMainWindow):
 
 
         # Setando size de todos
-        self.botaoadicionar.setFixedSize(150,50)
+        self.botaoadicionar.setFixedSize(150,25)
+        self.botaodeletar.setFixedSize(150,25)
+
         self.botaoiniciar.setFixedSize(200,50)
         self.botaoparar.setFixedSize(200,50)
         self.botaoreiniciar.setFixedSize(200,50)
         self.botaozerar.setFixedSize(200,50)
-        self.lista.setFixedWidth(150)  # Largura da lista fixa de 150
-        self.lista2.setFixedWidth(150)  # Largura da lista fixa de 150
-        self.listatexto.setFixedSize(150, 30) # Largura da caixa de texto
-        self.labeltitulo.setFixedWidth(self.width())
+
+        self.lista.setFixedWidth(150)
+        self.lista2.setFixedWidth(150)
+        self.listatexto.setFixedSize(150, 30)
+        self.labelprincipal.setFixedWidth(self.width())
+
 
         self.initUI()
 
+    def initUI(self):
 
-    def initUI(self):   # UI stuff
 
-
-        self.labeltitulo.setStyleSheet("""
+        # Style da Label
+        self.labelprincipal.setStyleSheet("""
             background-color: white;
             color: black;
             border: 2px solid black;
             border-radius: 10px;
             font-size: 20px;
-            font-weight: bold;         
+            font-weight: bold; 
+            word-wrap: break-word;        
         """)
 
+        descricao = """
+        <p style=
+        "font-size: 24px; 
+        font-weight: bold; 
+        color: black;">
+        Título da Página
+        </p>
+        <br>
+        <p style=
+        "font-size: 16px; 
+        color: lightgray;
+        text-align: left;
+        margin: 10px;">
+        Sua descrição aqui!
+        </p>
+        
+        """
+        self.labelprincipal.setText(descricao)
+        self.labelprincipal.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
+        self.labelprincipal.setWordWrap(True)
 
-        layoutzao = QHBoxLayout()   # Adiciona um layout horizontal, que vai ter o esquerda direita e central
-
+        # Criando layout de botões
         layoutbotoes = QHBoxLayout()
         layoutbotoes.addWidget(self.botaoiniciar)
         layoutbotoes.addWidget(self.botaoparar)
@@ -69,29 +94,63 @@ class MainWindow(QMainWindow):
         layoutbotoes.addWidget(self.botaozerar)
 
 
-        layoutesquerda = QVBoxLayout()   # Define o layout da esquerda como um VBOX
-        layoutesquerda.addWidget(self.lista)   # Adiciona a lista no layout da esquerda
-        layoutesquerda.addWidget(self.listatexto)  # Adiciona a caixa de texto no layout da esquerda
+        # Criando layout da esquerda
+        layoutesquerda = QVBoxLayout()
+        layoutesquerda.addWidget(self.lista)
+        layoutesquerda.addWidget(self.listatexto)
         layoutesquerda.addWidget(self.botaoadicionar)
+        layoutesquerda.addWidget(self.botaodeletar)
 
-
+        # Criando layout da direita
         layoutdireita = QVBoxLayout()   # Define o layout da direita como um VBOX
         layoutdireita.addWidget(self.lista2)   # Adiciona uma lista no layout da direita
 
+
+        # Criando layout central
         central_layout = QVBoxLayout()
-        central_layout.addWidget(self.labeltitulo)
+        central_layout.addWidget(self.labelprincipal)
         central_layout.addLayout(layoutbotoes)
 
 
+        # Criando layout que vai conter todos os outros
+        layoutzao = QHBoxLayout()
         layoutzao.addLayout(layoutesquerda)
         layoutzao.addStretch(0)
         layoutzao.addLayout(central_layout)
         layoutzao.addStretch(0)
         layoutzao.addLayout(layoutdireita)
 
+        # Criando o widget que vai conter o layout, já que anexar um layout a uma janela é impossível
         widgetcentral = QWidget(self)
         widgetcentral.setLayout(layoutzao)
         self.setCentralWidget(widgetcentral)
+
+
+        # Definindo funções aos botões
+        self.botaoadicionar.clicked.connect(self.addlistaitem)
+        self.botaodeletar.clicked.connect(self.deletelistaitem)
+
+
+    # Função adicionar lista
+    def addlistaitem(self):
+        # Pega o texto que tá na caixa de texto. Strip apaga espaços.
+        # Quando a função for chamada, irá adicionar o texto a lista
+        # Por fim, limpa a caixa de texto
+        texto = self.listatexto.text().strip()
+        if texto:
+            self.lista.addItem(texto)
+            self.listatexto.clear()
+
+
+    # Função deletar item da lista
+    def deletelistaitem(self):
+        # Pega o que tá selecionado
+        # Se oque tiver selecionado for realmente um item, pega a linha desse item e deleta
+        item = self.lista.currentItem()
+        if item:
+            linha = self.lista.row(item)
+            self.lista.takeItem(linha)
+
 
 
     # def resizeEvent(self, event):   # Caso o usuário maximize a tela, vai ter a altura da tela
