@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QListWidget, QVBoxLayout,
                              QWidget, QHBoxLayout, QLineEdit, QPushButton, QGridLayout, QLabel)
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 
 
 class MainWindow(QMainWindow):
@@ -18,6 +18,7 @@ class MainWindow(QMainWindow):
         self.listatexto = QLineEdit(self)
         self.lista = QListWidget(self)
         self.lista2 = QListWidget(self)
+        self.lista2.setDragDropMode(QListWidget.InternalMove)
         self.botaoadicionar = QPushButton("Adicionar...")
         self.botaodeletar = QPushButton("Deletar...")
         self.botaoiniciar = QPushButton("Iniciar")
@@ -48,6 +49,11 @@ class MainWindow(QMainWindow):
         self.listatexto.setFixedSize(150, 30)
         self.labelprincipal.setFixedWidth(self.width())
 
+        self.current_item = None
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_timer)
+        self.seconds_elapsed = 0
+
 
         self.initUI()
 
@@ -55,9 +61,10 @@ class MainWindow(QMainWindow):
     def initUI(self):
 
         # Definindo funções aos botões, e double click na lista.
-        self.lista.itemDoubleClicked.connect(self.get_name)
+        self.lista.itemDoubleClicked.connect(self.get_title_name)
         self.botaoadicionar.clicked.connect(self.addlistaitem)
         self.botaodeletar.clicked.connect(self.deletelistaitem)
+        self.botaoiniciar.clicked.connect(self.start_timer)
 
 
         # Style da Label
@@ -86,7 +93,7 @@ class MainWindow(QMainWindow):
         color: lightgray;
         text-align: left;
         margin: 10px;">
-        Sua descrição aqui
+        Desc example
         </p>
         """
 
@@ -139,14 +146,15 @@ class MainWindow(QMainWindow):
 
         #endregion
 
-    def get_name(self, item):
-        # Pega o nome doque foi double clickado
-        # Faz uma nova descrição, com oque foi double clickado
+
+    def get_title_name(self, item):
+        # Pega o nome do que foi double clickado
+        # Coloca o título da atividade double clickada na label
         # Por fim, seta o texto atualizado pra label
         nomeatividade = item.text()
         print(f"{nomeatividade}")
 
-        updatedescricao = f"""
+        updatetitulo = f"""
         <p style=
         "font-size: 24px; 
         font-weight: bold; 
@@ -159,10 +167,13 @@ class MainWindow(QMainWindow):
         color: lightgray;
         text-align: left;
         margin: 10px;">
-        Sua descrição aqui!
+        ...
         </p>
         """
-        self.labelprincipal.setText(updatedescricao)
+        self.labelprincipal.setText(updatetitulo)
+        self.current_item = nomeatividade
+
+        self.reset_timer()
 
 
     # Função adicionar lista
@@ -185,12 +196,20 @@ class MainWindow(QMainWindow):
             linha = self.lista.row(item)
             self.lista.takeItem(linha)
 
+    def start_timer(self):
+        if self.current_item:
+            self.seconds_elapsed = 0
+            self.timer.start(1000)
+            print(f"Timer iniciado para: {self.current_item}")
 
+    def update_timer(self):
+        self.seconds_elapsed += 1
+        print(f"{self.current_item}: {self.seconds_elapsed} segundos.")
 
-    # def resizeEvent(self, event):   # Caso o usuário maximize a tela, vai ter a altura da tela
-    #     self.lista.setGeometry(0, 0, 150, self.height())
-    #     self.lista2.setGeometry(self.width() - 150, 0, 150, self.height())
-
+    def reset_timer(self):
+        self.timer.stop()
+        self.seconds_elapsed = 0
+        print("Timer zerado monstramente.")
 
 def main():
     app = QApplication(sys.argv)
@@ -200,3 +219,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+    # def resizeEvent(self, event):   # Caso o usuário maximize a tela, vai ter a altura da tela
+    #     self.lista.setGeometry(0, 0, 150, self.height())
+    #     self.lista2.setGeometry(self.width() - 150, 0, 150, self.height())
