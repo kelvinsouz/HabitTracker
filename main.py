@@ -58,11 +58,13 @@ class MainWindow(QMainWindow):
         self.lista.addItem("Teste #1")
         self.lista.addItem("Teste #2")
         self.lista.addItem("Teste #3")
+        self.lista.addItem("Macacagem")
 
         # Criando self.hábitos, que será usado no listviewmodel. Valores padrões passados como teste.
         self.habitos = [
             {"name": "Teste #4", "status": "INATIVO", "total_time": 0},
-            {"name": "Teste #5", "status": "INATIVO", "total_time": 10}
+            {"name": "Teste #5", "status": "INATIVO", "total_time": 10},
+            {"name": "Macacagem", "status": "INATIVO", "total_time": 0}
         ]
 
         # Setando o modelo da lista 2: O modelo é um listviewmodel, usando self.habitos
@@ -106,6 +108,8 @@ class MainWindow(QMainWindow):
         self.botaoadicionar.clicked.connect(self.addlistaitem)
         self.botaodeletar.clicked.connect(self.deletelistaitem)
         self.botaoiniciar.clicked.connect(self.start_timer)
+        self.botaoparar.clicked.connect(self.stop_timer)
+        self.botaoreiniciar.clicked.connect(self.reset_timer)
 
         # region Style de labels
 
@@ -225,8 +229,7 @@ class MainWindow(QMainWindow):
         self.current_item = nomeatividade
 
         # Toda vez que houver um double click na lista1, o timer será resetado nessa função "Reset timer"
-        self.reset_timer()
-
+        # self.reset_timer()
 
     # Toda vez que houver um clique no botão adicionar, essa função será executada.
     def addlistaitem(self):
@@ -267,28 +270,64 @@ class MainWindow(QMainWindow):
                     self.model.layoutChanged.emit()
                     print(f"Algo foi deletado da lista 2: {nome_item_lista1}")
                     break
-            # Pega a row do item
+            # Pega a row lááá do primeiro item selecionado (na lista 1)
             linhalista1 = self.lista.row(item)
-            # Deleta da lista 1 também
+            # Deleta também
             self.lista.takeItem(linhalista1)
 
-
+    # Ao clicar iniciar, essa função é executada
     def start_timer(self):
+        # Se o item selecionado for válido
         if self.current_item:
-            self.seconds_elapsed = 0
+            # Starta um timer que ticka a cada 1s
             self.timer.start(1000)
             print(f"Timer iniciado para: {self.current_item}")
+        else:
+            print("O item selecionado não é válido")
 
-
+    # Essa função é executada a cada 1 segundo após o timer ser ligado
     def update_timer(self):
+        # A variável seconds_elapsed, definida anteriormente como 0, é adicionado em 1.
         self.seconds_elapsed += 1
-        print(f"{self.current_item}: {self.seconds_elapsed} segundos.")
+        # Criei uma booleana nova, encontrado, que terá o propósito a seguir:
+        encontrado = False
 
+        # Loop no self.habitos
+        for habito in self.habitos:
+            # Durante o loop, se for encontrado um hábito com o mesmo nome do item selecinado
+            if habito["name"] == self.current_item:
+                # Atualiza o "total_time" DESSE hábito em específico para o seconds_elapsed.
+                habito["total_time"] = self.seconds_elapsed
+                # Atualiza a lista
+                self.model.layoutChanged.emit()
+                # Booleana encontrado agora vira true
+                encontrado = True
+                break
+        # Se nenhum hábito tiver o mesmo nome do item selecionado pelo usuário
+        if not encontrado:
+            # Printa isso
+            print("Ué, não tem nenhum item com esse nome lá")
+            # Zera o timer monstramente
+            self.reset_timer()
 
-    def reset_timer(self):
+    # Essa função será executada toda vez que o botão parar for clicado
+    def stop_timer(self):
+        # Simplesmente faz parar...
         self.timer.stop()
+        print("Timer parado no momento..")
+
+    # Essa função será executada em dois casos:
+    # Quando o botão iniciar for clicado
+    # Se o usuário tentar iniciar um timer, mas não tem nenhum item lá do outro lado com o mesmo nome
+    def reset_timer(self):
+        # Para o timer
+        self.timer.stop()
+        # Muda seconds_elapsed para 0
         self.seconds_elapsed = 0
+        # Printa isso
         print("Timer zerado monstramente.")
+        # Atualiza o modelo
+        self.model.layoutChanged.emit()
 
     # Toda vez que algo for selecionado na lista 1, vai limpar na lista 2
     def lista_selecao_clear(self):
