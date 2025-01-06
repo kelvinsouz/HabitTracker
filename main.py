@@ -25,7 +25,10 @@ class ListViewModel(QAbstractListModel):
             habito = self.habitos[index.row()]
             # O valor do dicionário que a função hábito pegou será retornado neste formato abaixo
             # E aí o hábito será exibido
-            return f"{habito['name']}\nEstado: {habito['status']}\nTempo total: {habito['total_time']}s"
+            return (f"{habito['name']}\n"
+                    f"Estado: {habito['status']}\n"
+                    f"Tempo em andamento: {habito['actual_time']}s\n"
+                    f"Tempo total: {habito['total_time']}s")
 
     # Apenas diz ao PyQt5 quantas linhas estão presentes
     def rowCount(self, index=QModelIndex()):
@@ -49,9 +52,9 @@ class MainWindow(QMainWindow):
         self.botaoadicionar = QPushButton("Adicionar...")
         self.botaodeletar = QPushButton("Deletar...")
         self.botaoiniciar = QPushButton("Iniciar")
-        self.botaoparar = QPushButton("Parar")
+        self.botaopausar = QPushButton("Pausar")
         self.botaoreiniciar = QPushButton("Reiniciar")
-        self.botaozerar = QPushButton("Zerar")
+        self.botaoparar = QPushButton("Parar / Zerar")
 
 
         # Adicionando itens à lista 1
@@ -62,9 +65,26 @@ class MainWindow(QMainWindow):
 
         # Criando self.hábitos, que será usado no listviewmodel. Valores padrões passados como teste.
         self.habitos = [
-            {"name": "Teste #4", "status": "INATIVO", "seconds_elapsed": 0, "running": False, "total_time": 0},
-            {"name": "Teste #5", "status": "INATIVO", "seconds_elapsed": 0, "running": False, "total_time": 10},
-            {"name": "MORANGO", "status": "INATIVO", "seconds_elapsed": 0, "running": False, "total_time": 0}
+            {"name": "Teste #4",
+             "status": "INATIVO",
+             "seconds_elapsed": 0,
+             "running": False,
+             "actual_time": 0,
+             "total_time": 0},
+
+            {"name": "Teste #5",
+             "status": "INATIVO",
+             "seconds_elapsed": 0,
+             "actual_time": 0,
+             "running": False,
+             "total_time": 10},
+
+            {"name": "MORANGO",
+             "status": "INATIVO",
+             "seconds_elapsed": 0,
+             "actual_time": 0,
+             "running": False,
+             "total_time": 0}
         ]
 
         # Setando o modelo da lista 2: O modelo é um listviewmodel, usando self.habitos
@@ -77,9 +97,9 @@ class MainWindow(QMainWindow):
         self.botaodeletar.setFixedSize(150,25)
 
         self.botaoiniciar.setFixedSize(200,50)
-        self.botaoparar.setFixedSize(200,50)
+        self.botaopausar.setFixedSize(200, 50)
         self.botaoreiniciar.setFixedSize(200,50)
-        self.botaozerar.setFixedSize(200,50)
+        self.botaoparar.setFixedSize(200, 50)
 
         self.lista.setFixedWidth(150)
         self.lista2.setFixedWidth(300)
@@ -108,8 +128,9 @@ class MainWindow(QMainWindow):
         self.botaoadicionar.clicked.connect(self.addlistaitem)
         self.botaodeletar.clicked.connect(self.deletelistaitem)
         self.botaoiniciar.clicked.connect(self.start_timer)
-        self.botaoparar.clicked.connect(self.stop_timer)
+        self.botaopausar.clicked.connect(self.stop_timer)
         self.botaoreiniciar.clicked.connect(self.reset_timer)
+        self.botaoparar.clicked.connect(self.fullstop)
 
         # region Style de labels
 
@@ -156,9 +177,9 @@ class MainWindow(QMainWindow):
         # Criando layout de botões
         layoutbotoes = QHBoxLayout()
         layoutbotoes.addWidget(self.botaoiniciar)
-        layoutbotoes.addWidget(self.botaoparar)
+        layoutbotoes.addWidget(self.botaopausar)
         layoutbotoes.addWidget(self.botaoreiniciar)
-        layoutbotoes.addWidget(self.botaozerar)
+        layoutbotoes.addWidget(self.botaoparar)
 
 
         # Criando layout da esquerda
@@ -242,7 +263,14 @@ class MainWindow(QMainWindow):
             self.lista.addItem(texto)
             # Adiciona o texto no dicionário self.habitos, que por sua vez é automaticamente adicionado na lista
             # por conta da função data
-            self.habitos.append({"name": texto, "status": "INATIVO", "seconds_elapsed": 0, "running": False, "total_time":0})
+            self.habitos.append(
+                {"name": texto,
+                 "status": "INATIVO",
+                 "seconds_elapsed": 0,
+                 "running": False,
+                 "actual_time": 0,
+                 "total_time":0}
+            )
             # Notifica ao PyQt que algo mudou, fazendo-o atualizar a lista
             self.model.layoutChanged.emit()
             # Limpa a caixa de texto que foi digitado
@@ -281,6 +309,7 @@ class MainWindow(QMainWindow):
             for habito in self.habitos:
                 if habito["running"] == True:
                     habito["running"] = False
+                    habito["status"] = "INATIVO"
 
 
             for habito in self.habitos:
@@ -288,7 +317,8 @@ class MainWindow(QMainWindow):
                 if habito["name"] == self.current_item:
                     # Running como true
                     habito["running"] = True
-                    # Start tiemr
+                    habito["status"] = "ATIVO"
+                    # Start timer
                     self.timer.start(1000)
                     # Timer iniciado
                     print(f"Timer iniciado para: {self.current_item}")
@@ -302,16 +332,15 @@ class MainWindow(QMainWindow):
     def update_timer(self):
         # Criei uma booleana nova, encontrado, que terá o propósito a seguir:
         encontrado = False
-
         # Loop no self.habitos
         for habito in self.habitos:
-            # Durante o loop, se for encontrado um hábito com o mesmo nome do item selecinado
+            # Se tiver algum hábito Running
             if habito["running"] == True:
-
+                # Aumenta 1s dos seconds_elapsed
                 habito["seconds_elapsed"] += 1
-
                 # Atualiza o "total_time" DESSE hábito em específico para o seconds_elapsed.
                 habito["total_time"] = habito["seconds_elapsed"]
+                habito["actual_time"] += 1
                 # Atualiza a lista
                 self.model.layoutChanged.emit()
                 # Booleana encontrado agora vira true
@@ -324,23 +353,39 @@ class MainWindow(QMainWindow):
             # Zera o timer monstramente
             self.reset_timer()
 
-    # Essa função será executada toda vez que o botão parar for clicado
+    # Essa função será executada toda vez que o botão pausar for clicado
     def stop_timer(self):
         # Simplesmente faz parar...
         self.timer.stop()
+        for habito in self.habitos:
+            if habito["status"] == "ATIVO":
+                habito["status"] = "INATIVO"
         print("Timer parado no momento..")
+        self.model.layoutChanged.emit()
+
 
     # Essa função será executada em dois casos:
     # Quando o botão iniciar for clicado
     # Se o usuário tentar iniciar um timer, mas não tem nenhum item lá do outro lado com o mesmo nome
     def reset_timer(self):
-        # Para o timer
-        self.timer.stop()
-        # # Muda seconds_elapsed para 0
-        # self.seconds_elapsed = 0
+        for habito in self.habitos:
+            if habito["running"] == True:
+                habito["actual_time"] = 0
         # Printa isso
         print("Timer zerado monstramente.")
         # Atualiza o modelo
+        self.model.layoutChanged.emit()
+
+    def fullstop(self):
+        self.timer.stop()
+        if self.current_item:
+            for habito in self.habitos:
+                if habito["name"] == self.current_item:
+                    habito["running"] = False
+                    habito["status"] = "INATIVO"
+                    habito["actual_time"] = 0
+                    break
+        print("ZERADO")
         self.model.layoutChanged.emit()
 
     # Toda vez que algo for selecionado na lista 1, vai limpar na lista 2
