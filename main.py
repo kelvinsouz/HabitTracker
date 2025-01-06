@@ -58,13 +58,13 @@ class MainWindow(QMainWindow):
         self.lista.addItem("Teste #1")
         self.lista.addItem("Teste #2")
         self.lista.addItem("Teste #3")
-        self.lista.addItem("Macacagem")
+        self.lista.addItem("MORANGO")
 
         # Criando self.hábitos, que será usado no listviewmodel. Valores padrões passados como teste.
         self.habitos = [
-            {"name": "Teste #4", "status": "INATIVO", "total_time": 0},
-            {"name": "Teste #5", "status": "INATIVO", "total_time": 10},
-            {"name": "Macacagem", "status": "INATIVO", "total_time": 0}
+            {"name": "Teste #4", "status": "INATIVO", "seconds_elapsed": 0, "running": False, "total_time": 0},
+            {"name": "Teste #5", "status": "INATIVO", "seconds_elapsed": 0, "running": False, "total_time": 10},
+            {"name": "MORANGO", "status": "INATIVO", "seconds_elapsed": 0, "running": False, "total_time": 0}
         ]
 
         # Setando o modelo da lista 2: O modelo é um listviewmodel, usando self.habitos
@@ -91,7 +91,7 @@ class MainWindow(QMainWindow):
         self.current_item = None                        # Armazena o nome da atividade atual
         self.timer = QTimer()                           # Dispara a cada 1s (Configurado mais adiante)
         self.timer.timeout.connect(self.update_timer)   # Quando o timer atingir o tempo configurado, executa a função
-        self.seconds_elapsed = 0                        # Variável que armazena o tempo passado
+        # self.seconds_elapsed = 0                        # Variável que armazena o tempo passado
 
         print(self.habitos)
         self.initUI()
@@ -197,7 +197,6 @@ class MainWindow(QMainWindow):
     # Toda vez que houver um double-clique na lista à esquerda, essa função será executada..
     def get_title_name(self, item):
 
-
         # Pega o nome do que foi double clickado
         nomeatividade = item.text()
 
@@ -243,14 +242,13 @@ class MainWindow(QMainWindow):
             self.lista.addItem(texto)
             # Adiciona o texto no dicionário self.habitos, que por sua vez é automaticamente adicionado na lista
             # por conta da função data
-            self.habitos.append({"name": texto, "status": "INATIVO", "total_time":0})
+            self.habitos.append({"name": texto, "status": "INATIVO", "seconds_elapsed": 0, "running": False, "total_time":0})
             # Notifica ao PyQt que algo mudou, fazendo-o atualizar a lista
             self.model.layoutChanged.emit()
             # Limpa a caixa de texto que foi digitado
             self.listatexto.clear()
 
             print(self.habitos)
-
 
     # Toda vez que houver um clique no botão deletar, essa função será executada.
     def deletelistaitem(self):
@@ -279,25 +277,41 @@ class MainWindow(QMainWindow):
     def start_timer(self):
         # Se o item selecionado for válido
         if self.current_item:
-            # Starta um timer que ticka a cada 1s
-            self.timer.start(1000)
-            print(f"Timer iniciado para: {self.current_item}")
+            # Se tiver algo true, vai ser colocado como false.
+            for habito in self.habitos:
+                if habito["running"] == True:
+                    habito["running"] = False
+
+
+            for habito in self.habitos:
+                # Se tiver algum hábito com o mesmo nome do selecionado
+                if habito["name"] == self.current_item:
+                    # Running como true
+                    habito["running"] = True
+                    # Start tiemr
+                    self.timer.start(1000)
+                    # Timer iniciado
+                    print(f"Timer iniciado para: {self.current_item}")
+                    break
+            else:
+                print("Algo deu errado... O item não foi encontrado")
         else:
             print("O item selecionado não é válido")
 
     # Essa função é executada a cada 1 segundo após o timer ser ligado
     def update_timer(self):
-        # A variável seconds_elapsed, definida anteriormente como 0, é adicionado em 1.
-        self.seconds_elapsed += 1
         # Criei uma booleana nova, encontrado, que terá o propósito a seguir:
         encontrado = False
 
         # Loop no self.habitos
         for habito in self.habitos:
             # Durante o loop, se for encontrado um hábito com o mesmo nome do item selecinado
-            if habito["name"] == self.current_item:
+            if habito["running"] == True:
+
+                habito["seconds_elapsed"] += 1
+
                 # Atualiza o "total_time" DESSE hábito em específico para o seconds_elapsed.
-                habito["total_time"] = self.seconds_elapsed
+                habito["total_time"] = habito["seconds_elapsed"]
                 # Atualiza a lista
                 self.model.layoutChanged.emit()
                 # Booleana encontrado agora vira true
@@ -322,8 +336,8 @@ class MainWindow(QMainWindow):
     def reset_timer(self):
         # Para o timer
         self.timer.stop()
-        # Muda seconds_elapsed para 0
-        self.seconds_elapsed = 0
+        # # Muda seconds_elapsed para 0
+        # self.seconds_elapsed = 0
         # Printa isso
         print("Timer zerado monstramente.")
         # Atualiza o modelo
