@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QListWidget, QVBoxLayout,
                              QWidget, QHBoxLayout, QLineEdit, QPushButton, QGridLayout, QLabel, QListView,
-                             QAbstractItemView)
+                             QAbstractItemView, QMessageBox)
 from PyQt5.QtCore import Qt, QTimer, QAbstractListModel, QModelIndex
 
 
@@ -111,9 +111,7 @@ class MainWindow(QMainWindow):
         self.current_item = None                        # Armazena o nome da atividade atual
         self.timer = QTimer()                           # Dispara a cada 1s (Configurado mais adiante)
         self.timer.timeout.connect(self.update_timer)   # Quando o timer atingir o tempo configurado, executa a função
-        # self.seconds_elapsed = 0                        # Variável que armazena o tempo passado
 
-        print(self.habitos)
         self.initUI()
 
 
@@ -248,9 +246,6 @@ class MainWindow(QMainWindow):
         # Armazena o nome do item que foi double clicado nesse "Current item"
         self.current_item = nomeatividade
 
-        # Toda vez que houver um double click na lista1, o timer será resetado nessa função "Reset timer"
-        # self.reset_timer()
-
     # Toda vez que houver um clique no botão adicionar, essa função será executada.
     def addlistaitem(self):
 
@@ -291,40 +286,40 @@ class MainWindow(QMainWindow):
             for i, habito in enumerate(self.habitos):
                 # Se na lista 2 tiver algo idêntico a lista 1
                 if habito["name"] == nome_item_lista1:
+                    if habito["running"]:
+                        habito["running"] = False
+                        habito["status"] = "INATIVO"
+                        self.timer.stop()
+                        print("A atividade estava ativa antes de deletá-la.\nParando o timer antes do delete...")
                     # Deleta da lista 2
                     del self.habitos[i]
                     self.model.layoutChanged.emit()
-                    print(f"Algo foi deletado da lista 2: {nome_item_lista1}")
                     break
             # Pega a row lááá do primeiro item selecionado (na lista 1)
             linhalista1 = self.lista.row(item)
             # Deleta também
             self.lista.takeItem(linhalista1)
 
+
     # Ao clicar iniciar, essa função é executada
     def start_timer(self):
         # Se o item selecionado for válido
         if self.current_item:
-            # Se tiver algo true, vai ser colocado como false.
             for habito in self.habitos:
+                # Se algum hábito tiver rodando, running setado como false, status setado como inativo
                 if habito["running"] == True:
                     habito["running"] = False
                     habito["status"] = "INATIVO"
-
-
-            for habito in self.habitos:
                 # Se tiver algum hábito com o mesmo nome do selecionado
                 if habito["name"] == self.current_item:
-                    # Running como true
+                    # Seta running como true e status como ativo, indicando que está rodando
                     habito["running"] = True
                     habito["status"] = "ATIVO"
-                    # Start timer
+                    # Começa o timer
                     self.timer.start(1000)
                     # Timer iniciado
                     print(f"Timer iniciado para: {self.current_item}")
                     break
-            else:
-                print("Algo deu errado... O item não foi encontrado")
         else:
             print("O item selecionado não é válido")
 
@@ -332,14 +327,15 @@ class MainWindow(QMainWindow):
     def update_timer(self):
         # Criei uma booleana nova, encontrado, que terá o propósito a seguir:
         encontrado = False
-        # Loop no self.habitos
+
         for habito in self.habitos:
-            # Se tiver algum hábito Running
+            # Se tiver algum hábito rodando
             if habito["running"] == True:
-                # Aumenta 1s dos seconds_elapsed
+                # Aumenta 1s dos seconds_elapsed dele
                 habito["seconds_elapsed"] += 1
-                # Atualiza o "total_time" DESSE hábito em específico para o seconds_elapsed.
+                # Atualiza o "total_time" dele pra seconds_elapsed
                 habito["total_time"] = habito["seconds_elapsed"]
+                # Aumenta o "actual_time" em 1s
                 habito["actual_time"] += 1
                 # Atualiza a lista
                 self.model.layoutChanged.emit()
@@ -355,38 +351,68 @@ class MainWindow(QMainWindow):
 
     # Essa função será executada toda vez que o botão pausar for clicado
     def stop_timer(self):
-        # Simplesmente faz parar...
-        self.timer.stop()
-        for habito in self.habitos:
-            if habito["status"] == "ATIVO":
-                habito["status"] = "INATIVO"
-        print("Timer parado no momento..")
-        self.model.layoutChanged.emit()
-
+        if self.current_item:
+            encontrado = False
+            for habito in self.habitos:
+                # Se o item selecionado for um hábito que está ativo
+                if self.current_item == habito["name"] and habito["status"] == "ATIVO":
+                    # Ele para e troca o status pra inativo
+                    self.timer.stop()
+                    habito["status"] = "INATIVO"
+                    print("Timer parado no momento..")
+                    encontrado = True
+                    break
+            if encontrado == False:
+                self.warningwrongselec()
+            self.model.layoutChanged.emit()
 
     # Essa função será executada em dois casos:
     # Quando o botão iniciar for clicado
     # Se o usuário tentar iniciar um timer, mas não tem nenhum item lá do outro lado com o mesmo nome
     def reset_timer(self):
+        encontrado = False
         for habito in self.habitos:
-            if habito["running"] == True:
+            if self.current_item == habito["name"] and habito["running"] == True:
+                # Atualiza o actual time dele pra 0
                 habito["actual_time"] = 0
-        # Printa isso
-        print("Timer zerado monstramente.")
-        # Atualiza o modelo
-        self.model.layoutChanged.emit()
+                # Printa isso
+                print("Timer zerado monstramente.")
+                # Atualiza o modelo
+                self.model.layoutChanged.emit()
+                encontrado = True
+                break
+        if encontrado == False:
+            self.warningwrongselec()
 
     def fullstop(self):
-        self.timer.stop()
+        encontrado = False
+        # Se item válido
         if self.current_item:
             for habito in self.habitos:
-                if habito["name"] == self.current_item:
+                # Se o nome do hábito for o mesmo do selecionado
+                if habito["name"] == self.current_item and habito["running"] == True:
+                    # Performa essas mudanças e para o timer
                     habito["running"] = False
                     habito["status"] = "INATIVO"
                     habito["actual_time"] = 0
+                    self.timer.stop()
+                    print("ZERADO")
+                    self.model.layoutChanged.emit()
+                    encontrado = True
                     break
-        print("ZERADO")
-        self.model.layoutChanged.emit()
+            if encontrado == False:
+                self.warningwrongselec()
+
+
+    def warningwrongselec(self):
+
+        msgbox = QMessageBox()
+        msgbox.setIcon(QMessageBox.Warning)
+        msgbox.setWindowTitle("Aviso")
+        msgbox.setText("Por favor, selecione o item clicando duas vezes nele antes de executar esta ação")
+        msgbox.setStandardButtons(QMessageBox.Ok)
+        msgbox.exec_()
+
 
     # Toda vez que algo for selecionado na lista 1, vai limpar na lista 2
     def lista_selecao_clear(self):
