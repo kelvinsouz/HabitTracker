@@ -61,7 +61,7 @@ class MainWindow(QMainWindow):
         self.lista.addItem("Teste #1")
         self.lista.addItem("Teste #2")
         self.lista.addItem("Teste #3")
-        self.lista.addItem("MORANGO")
+        self.lista.addItem("LAYANINHA")
 
         # Criando self.hábitos, que será usado no listviewmodel. Valores padrões passados como teste.
         self.habitos = [
@@ -79,7 +79,7 @@ class MainWindow(QMainWindow):
              "running": False,
              "total_time": 10},
 
-            {"name": "MORANGO",
+            {"name": "LAYANINHA",
              "status": "INATIVO",
              "seconds_elapsed": 0,
              "actual_time": 0,
@@ -325,9 +325,6 @@ class MainWindow(QMainWindow):
 
     # Essa função é executada a cada 1 segundo após o timer ser ligado
     def update_timer(self):
-        # Criei uma booleana nova, encontrado, que terá o propósito a seguir:
-        encontrado = False
-
         for habito in self.habitos:
             # Se tiver algum hábito rodando
             if habito["running"] == True:
@@ -339,77 +336,96 @@ class MainWindow(QMainWindow):
                 habito["actual_time"] += 1
                 # Atualiza a lista
                 self.model.layoutChanged.emit()
-                # Booleana encontrado agora vira true
-                encontrado = True
                 break
-        # Se nenhum hábito tiver o mesmo nome do item selecionado pelo usuário
-        if not encontrado:
-            # Printa isso
-            print("Ué, não tem nenhum item com esse nome lá")
-            # Zera o timer monstramente
-            self.reset_timer()
 
     # Essa função será executada toda vez que o botão pausar for clicado
     def stop_timer(self):
-        if self.current_item:
-            encontrado = False
+
+        # Se não houver algo selecionado
+        if not self.current_item:
+            # Mensagem de aviso
+            self.warningwrongselec("Nenhum hábito válido selecionado.")
+        else:
+            # Define habit found e wrong selection
+            habit_found = False
+            wrong_selection = False
+            # Loopa
             for habito in self.habitos:
-                # Se o item selecionado for um hábito que está ativo
-                if self.current_item == habito["name"] and habito["status"] == "ATIVO":
-                    # Ele para e troca o status pra inativo
-                    self.timer.stop()
-                    habito["status"] = "INATIVO"
-                    print("Timer parado no momento..")
-                    encontrado = True
-                    break
-            if encontrado == False:
-                self.warningwrongselec()
+                # Se tiver algum hábito rodando, prossegue
+                if habito["running"]:
+                    # Se não tiver nenhum hábito com o nome do que tá selecionado
+                    if habito["name"] != self.current_item:
+                        # Seleção errada é true
+                        wrong_selection = True
+                    else:
+                        # Se tiver algo rodando, e o nome for igual, vai pausar o hábito normalmente
+                        habito["running"] = False
+                        self.timer.stop()
+                        print(f"Timer pausado para: {self.current_item}")
+                        habito["status"] = "INATIVO"
+                        habit_found = True
+
+                        break
+            # Se apenas for seleção errada, mas achar um hábito
+            if wrong_selection and not habit_found:
+                self.warningwrongselec("Por favor, selecione o hábito corretamente")
+
+            # Se não achar um hábito, e nem uma seleção errada
+            if not habit_found and not wrong_selection:
+                self.warningwrongselec("Não parece ter um hábito ativo...")
+
+            # Atualiza o modelo
             self.model.layoutChanged.emit()
 
     # Essa função será executada em dois casos:
     # Quando o botão iniciar for clicado
     # Se o usuário tentar iniciar um timer, mas não tem nenhum item lá do outro lado com o mesmo nome
     def reset_timer(self):
-        encontrado = False
+        wrong_selection = False
+
         for habito in self.habitos:
-            if self.current_item == habito["name"] and habito["running"] == True:
-                # Atualiza o actual time dele pra 0
-                habito["actual_time"] = 0
-                # Printa isso
-                print("Timer zerado monstramente.")
-                # Atualiza o modelo
-                self.model.layoutChanged.emit()
-                encontrado = True
-                break
-        if encontrado == False:
-            self.warningwrongselec()
+            # Se tiver algum hábito com o tempo em andamento maior que um, prossegue
+            if habito["actual_time"] >= 1:
+                # Se não tiver nenhum hábito com o nome do que tá selecionado
+                if habito["name"] != self.current_item:
+                    # Seleção errada é true
+                    wrong_selection = True
+                else:
+                    # Atualiza o actual time dele pra 0
+                    habito["actual_time"] = 0
+                    # Printa isso
+                    print("Timer zerado monstramente.")
+                    # Atualiza o modelo
+                    self.model.layoutChanged.emit()
+                    break
+
+        # Se apenas for seleção errada, mas achar um hábito
+        if wrong_selection:
+            self.warningwrongselec("Por favor, seEWQEWQlecione o hábito corretamente")
+
 
     def fullstop(self):
-        encontrado = False
-        # Se item válido
-        if self.current_item:
-            for habito in self.habitos:
-                # Se o nome do hábito for o mesmo do selecionado
-                if habito["name"] == self.current_item and habito["running"] == True:
-                    # Performa essas mudanças e para o timer
-                    habito["running"] = False
-                    habito["status"] = "INATIVO"
-                    habito["actual_time"] = 0
-                    self.timer.stop()
-                    print("ZERADO")
-                    self.model.layoutChanged.emit()
-                    encontrado = True
-                    break
-            if encontrado == False:
-                self.warningwrongselec()
+        for habito in self.habitos:
+            # Se não tiver nenhum hábito com o nome do que tá selecionado
+            if habito["name"] == self.current_item:
+                # Performa essas mudanças e para o timer
+                habito["running"] = False
+                habito["status"] = "INATIVO"
+                habito["actual_time"] = 0
+                print("ZERADO")
+                self.model.layoutChanged.emit()
+                break
+            if habito["name"] == self.current_item and habito["running"]:
+                self.timer.stop()
 
 
-    def warningwrongselec(self):
+
+    def warningwrongselec(self, text):
 
         msgbox = QMessageBox()
         msgbox.setIcon(QMessageBox.Warning)
         msgbox.setWindowTitle("Aviso")
-        msgbox.setText("Por favor, selecione o item clicando duas vezes nele antes de executar esta ação")
+        msgbox.setText(text)
         msgbox.setStandardButtons(QMessageBox.Ok)
         msgbox.exec_()
 
