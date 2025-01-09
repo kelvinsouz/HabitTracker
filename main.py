@@ -1,9 +1,9 @@
 import sys
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QListWidget, QVBoxLayout,
                              QWidget, QHBoxLayout, QLineEdit, QPushButton, QGridLayout, QLabel, QListView,
-                             QAbstractItemView, QMessageBox)
+                             QAbstractItemView, QMessageBox, QDialog, QDialogButtonBox, QTextEdit)
 from PyQt5.QtCore import Qt, QTimer, QAbstractListModel, QModelIndex
-
+from bs4 import BeautifulSoup
 
 # Cria uma subclasse de QAbstractListModel, pra criar um modelo totalmente personalizado pra mostrar na seção da direita
 # PS: rowCount e data são nomes necessários para que o QAbstractListModel funcione.
@@ -34,17 +34,54 @@ class ListViewModel(QAbstractListModel):
     def rowCount(self, index=QModelIndex()):
         return len(self.habitos)
 
+class EditDialog(QDialog):
+
+    def __init__(self, parent=None, main_window =None, item=None):
+        super().__init__(parent)
+
+        # region Janela - Editar Descrição
+
+        # Lá embaixo, no open dialog, eu passei a janela principal MainWindow, pra conseguir usar as funções dela
+        self.main_window = main_window
+        # No open dialog eu também passei o self.current_item pra ser esse 'item'.
+        self.item = item
+
+        # Definindo atributos da window
+        self.setWindowTitle(f"Editar descrição de '{item}'")
+        self.setGeometry(200,200,400,300)
+
+        mainlayout = QVBoxLayout(self)
+
+        # Definindo Título (da label)
+        self.labeltitulo = QLabel(f"Aqui você pode editar a descrição de sua atividade como quiser.")
+        mainlayout.addWidget(self.labeltitulo)
+
+        # Definindo descrição a ser editada
+        self.text_edit = QTextEdit(self)
+        descricao = self.main_window.get_description()
+        self.text_edit.setText(descricao)
+        mainlayout.addWidget(self.text_edit)
+
+        # Botões de save e cancel
+        self.button_box = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel, self)
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+        mainlayout.addWidget(self.button_box)
+
+        # endregion
+
+
 
 class MainWindow(QMainWindow):
 
-
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Janela teste")
+        self.setWindowTitle("Habit Tracker")
         self.setGeometry(100, 150, 900, 600)
 
 
-        # Criando itens (Label, lista 1/2, caixa de texto, botões)
+        #region Criando itens (Labels | Lists | Buttons)
+
         self.labelprincipal = QLabel("Aqui ficará as atividades", self)
         self.listatexto = QLineEdit(self)
         self.lista = QListWidget(self)
@@ -55,13 +92,21 @@ class MainWindow(QMainWindow):
         self.botaopausar = QPushButton("Pausar")
         self.botaoreiniciar = QPushButton("Reiniciar")
         self.botaoparar = QPushButton("Parar / Zerar")
+        self.botaoeditdesc = QPushButton("Editar descrição...")
 
+        #endregion
+
+        #region TEMPORARIO = Itens teste da lista 1
 
         # Adicionando itens à lista 1
         self.lista.addItem("Teste #1")
         self.lista.addItem("Teste #2")
         self.lista.addItem("Teste #3")
         self.lista.addItem("LAYANINHA")
+
+        #endregion
+
+        # region Criando self.habitos
 
         # Criando self.hábitos, que será usado no listviewmodel. Valores padrões passados como teste.
         self.habitos = [
@@ -87,39 +132,58 @@ class MainWindow(QMainWindow):
              "total_time": 0}
         ]
 
+        # endregion
+
+        # region Lista 2 --> ListViewModel
+
         # Setando o modelo da lista 2: O modelo é um listviewmodel, usando self.habitos
         self.model = ListViewModel(self.habitos)
         self.lista2.setModel(self.model)
 
+        # endregion
+
+        # region Definindo os tamanhos dos botoes
 
         # Setando size de todos
         self.botaoadicionar.setFixedSize(150,25)
         self.botaodeletar.setFixedSize(150,25)
 
-        self.botaoiniciar.setFixedSize(200,50)
-        self.botaopausar.setFixedSize(200, 50)
-        self.botaoreiniciar.setFixedSize(200,50)
-        self.botaoparar.setFixedSize(200, 50)
+        self.botaoiniciar.setFixedSize(170,50)
+        self.botaopausar.setFixedSize(170, 50)
+        self.botaoreiniciar.setFixedSize(170,50)
+        self.botaoparar.setFixedSize(170, 50)
+        self.botaoeditdesc.setFixedSize(100, 50)
 
         self.lista.setFixedWidth(150)
         self.lista2.setFixedWidth(300)
         self.listatexto.setFixedSize(150, 30)
         self.labelprincipal.setFixedWidth(self.width())
 
+        # endregion
+
+        # region Funções do timer
 
         # Criando funções para o timer
         self.current_item = None                        # Armazena o nome da atividade atual
         self.timer = QTimer()                           # Dispara a cada 1s (Configurado mais adiante)
         self.timer.timeout.connect(self.update_timer)   # Quando o timer atingir o tempo configurado, executa a função
 
+        # endregion
+
         self.initUI()
 
 
     def initUI(self):
 
+        # region Cleanar seleções
+
         # Definindo funções ao mudar uma seleção de uma lista
         self.lista.selectionModel().selectionChanged.connect(self.lista2_selecao_clear)
         self.lista2.selectionModel().selectionChanged.connect(self.lista_selecao_clear)
+
+        # endregion
+
+        # region Funções de botões e double click
 
         # Definindo funções aos double-click da lista, e ao click dos botões
         self.lista.itemDoubleClicked.connect(self.get_title_name)
@@ -129,8 +193,11 @@ class MainWindow(QMainWindow):
         self.botaopausar.clicked.connect(self.stop_timer)
         self.botaoreiniciar.clicked.connect(self.reset_timer)
         self.botaoparar.clicked.connect(self.fullstop)
+        self.botaoeditdesc.clicked.connect(self.open_edit_dialog)
 
-        # region Style de labels
+        # endregion
+
+        # region Texto padrão da label + Estilo
 
         # Style da Label
         self.labelprincipal.setStyleSheet("""
@@ -169,7 +236,6 @@ class MainWindow(QMainWindow):
 
         #endregion
 
-
         #region Manipulação de layouts
 
         # Criando layout de botões
@@ -178,6 +244,7 @@ class MainWindow(QMainWindow):
         layoutbotoes.addWidget(self.botaopausar)
         layoutbotoes.addWidget(self.botaoreiniciar)
         layoutbotoes.addWidget(self.botaoparar)
+        layoutbotoes.addWidget(self.botaoeditdesc)
 
 
         # Criando layout da esquerda
@@ -213,6 +280,15 @@ class MainWindow(QMainWindow):
 
         #endregion
 
+
+
+    # region Todas as funções do programa
+
+
+
+
+    # region Manipulação da label
+
     # Toda vez que houver um double-clique na lista à esquerda, essa função será executada..
     def get_title_name(self, item):
 
@@ -245,6 +321,25 @@ class MainWindow(QMainWindow):
 
         # Armazena o nome do item que foi double clicado nesse "Current item"
         self.current_item = nomeatividade
+
+    def get_description(self):
+        descricao_html = self.labelprincipal.text()
+
+        soup = BeautifulSoup(descricao_html, "html.parser")
+
+        descricao_tag = soup.find_all("p")[1]
+
+        if descricao_tag:
+            descricao_texto = descricao_tag.get_text(strip=True)
+            print(f"Descrição: {descricao_texto}")
+            return descricao_texto
+        else:
+            print("Nada mano. Foi mal")
+
+
+    # endregion
+
+    # region Funções caixa de texto
 
     # Toda vez que houver um clique no botão adicionar, essa função será executada.
     def addlistaitem(self):
@@ -300,13 +395,16 @@ class MainWindow(QMainWindow):
             # Deleta também
             self.lista.takeItem(linhalista1)
 
+    # endregion
+
+    #region Funções botões timers
 
     # Ao clicar iniciar, essa função é executada
     def start_timer(self):
         # Se o item selecionado for válido
         if self.current_item:
             for habito in self.habitos:
-                # Se algum hábito tiver rodando, running setado como false, status setado como inativo
+                # Se algum hábito tiver rodando: running definido como false, status definido como inativo
                 if habito["running"] == True:
                     habito["running"] = False
                     habito["status"] = "INATIVO"
@@ -338,7 +436,7 @@ class MainWindow(QMainWindow):
                 self.model.layoutChanged.emit()
                 break
 
-    # Essa função será executada toda vez que o botão pausar for clicado
+    # Essa função é executada sempre que o botão Pausar ser clicado
     def stop_timer(self):
 
         # Se não houver algo selecionado
@@ -377,9 +475,7 @@ class MainWindow(QMainWindow):
             # Atualiza o modelo
             self.model.layoutChanged.emit()
 
-    # Essa função será executada em dois casos:
-    # Quando o botão iniciar for clicado
-    # Se o usuário tentar iniciar um timer, mas não tem nenhum item lá do outro lado com o mesmo nome
+    # Essa função é executada sempre que o botão Reiniciar ser clicado
     def reset_timer(self):
         wrong_selection = False
 
@@ -401,9 +497,9 @@ class MainWindow(QMainWindow):
 
         # Se apenas for seleção errada, mas achar um hábito
         if wrong_selection:
-            self.warningwrongselec("Por favor, seEWQEWQlecione o hábito corretamente")
+            self.warningwrongselec("Por favor, selecione o hábito corretamente")
 
-
+    # Essa função é executada sempre que o botão Parar/Zerar ser clicado
     def fullstop(self):
         for habito in self.habitos:
             # Se não tiver nenhum hábito com o nome do que tá selecionado
@@ -418,8 +514,21 @@ class MainWindow(QMainWindow):
             if habito["name"] == self.current_item and habito["running"]:
                 self.timer.stop()
 
+    # endregion
 
+    # region Função pop-up editar descrição
+    def open_edit_dialog(self):
+        item = self.current_item
+        if item == None:
+            self.warningwrongselec("Por favor, selecione um item corretamente antes de editá-lo.")
+        else:
+            dialog = EditDialog(self, self, item)
+            dialog.exec_()
+    # end region
 
+    # region Função caixa de aviso
+
+    # Mensagem de aviso genérica. . .
     def warningwrongselec(self, text):
 
         msgbox = QMessageBox()
@@ -429,6 +538,9 @@ class MainWindow(QMainWindow):
         msgbox.setStandardButtons(QMessageBox.Ok)
         msgbox.exec_()
 
+    # endregion
+
+    # region Funções cleanar seleção
 
     # Toda vez que algo for selecionado na lista 1, vai limpar na lista 2
     def lista_selecao_clear(self):
@@ -440,7 +552,16 @@ class MainWindow(QMainWindow):
         if self.lista.selectedIndexes():
             self.lista2.selectionModel().clearSelection()
 
+    # endregion
 
+
+
+
+    # endregion
+
+
+
+    #endregion
 
 def main():
     app = QApplication(sys.argv)
