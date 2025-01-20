@@ -70,8 +70,6 @@ class EditDialog(QDialog):
 
         # endregion
 
-
-
 class MainWindow(QMainWindow):
 
     def __init__(self):
@@ -99,10 +97,10 @@ class MainWindow(QMainWindow):
         #region TEMPORARIO = Itens teste da lista 1
 
         # Adicionando itens à lista 1
-        self.lista.addItem("Teste #1")
-        self.lista.addItem("Teste #2")
-        self.lista.addItem("Teste #3")
-        self.lista.addItem("LAYANINHA")
+        # self.lista.addItem("Teste #1")
+        # self.lista.addItem("Teste #2")
+        # self.lista.addItem("Teste #3")
+        # self.lista.addItem("LAYANINHA")
 
         #endregion
 
@@ -110,26 +108,26 @@ class MainWindow(QMainWindow):
 
         # Criando self.hábitos, que será usado no listviewmodel. Valores padrões passados como teste.
         self.habitos = [
-            {"name": "Teste #4",
-             "status": "INATIVO",
-             "seconds_elapsed": 0,
-             "running": False,
-             "actual_time": 0,
-             "total_time": 0},
-
-            {"name": "Teste #5",
-             "status": "INATIVO",
-             "seconds_elapsed": 0,
-             "actual_time": 0,
-             "running": False,
-             "total_time": 10},
-
-            {"name": "LAYANINHA",
-             "status": "INATIVO",
-             "seconds_elapsed": 0,
-             "actual_time": 0,
-             "running": False,
-             "total_time": 0}
+            # {"name": "Teste #4",
+            #  "status": "INATIVO",
+            #  "seconds_elapsed": 0,
+            #  "running": False,
+            #  "actual_time": 0,
+            #  "total_time": 0},
+            #
+            # {"name": "Teste #5",
+            #  "status": "INATIVO",
+            #  "seconds_elapsed": 0,
+            #  "actual_time": 0,
+            #  "running": False,
+            #  "total_time": 10},
+            #
+            # {"name": "LAYANINHA",
+            #  "status": "INATIVO",
+            #  "seconds_elapsed": 0,
+            #  "actual_time": 0,
+            #  "running": False,
+            #  "total_time": 0}
         ]
 
         # endregion
@@ -341,31 +339,37 @@ class MainWindow(QMainWindow):
 
     # region Funções caixa de texto
 
+
     # Toda vez que houver um clique no botão adicionar, essa função será executada.
     def addlistaitem(self):
-
-
         # Pega o texto que o usuário digitou na caixa de texto. Strip apaga os espaços
         texto = self.listatexto.text().strip()
         # Se houver algum texto digitado...
         if texto:
             # Adiciona o texto na lista da esquerda
             self.lista.addItem(texto)
-            # Adiciona o texto no dicionário self.habitos, que por sua vez é automaticamente adicionado na lista
-            # por conta da função data
+            # Adiciona o texto no dicionário self.habitos, que também vai pra lista2.
             self.habitos.append(
-                {"name": texto,
-                 "status": "INATIVO",
-                 "seconds_elapsed": 0,
-                 "running": False,
-                 "actual_time": 0,
-                 "total_time":0}
+                {
+                    "name": texto,
+                    "status": "INATIVO",
+                    "seconds_elapsed": 0,
+                    "running": False,
+                    "actual_time": 0,
+                    "total_time": 0
+                }
             )
-            # Notifica ao PyQt que algo mudou, fazendo-o atualizar a lista
-            self.model.layoutChanged.emit()
-            # Limpa a caixa de texto que foi digitado
+            # Se após adicionar esse hábito, o tamanho de self.habitos for 1, significa que esse é o
+            # primeiro item da lista.
+            if len(self.habitos) == 1:
+                # Então ele vai criar esse modelo novo, e colocar na lista 2
+                # atualizando a lista 2, QAbstractListView
+                self.model = ListViewModel(self.habitos)
+                self.lista2.setModel(self.model)
+            else:
+                # Se tiver mais de 1 item, só precisa atualizar mesmo
+                self.model.layoutChanged.emit()
             self.listatexto.clear()
-
             print(self.habitos)
 
     # Toda vez que houver um clique no botão deletar, essa função será executada.
@@ -524,7 +528,7 @@ class MainWindow(QMainWindow):
         else:
             dialog = EditDialog(self, self, item)
             dialog.exec_()
-    # end region
+    # endregion
 
     # region Função caixa de aviso
 
