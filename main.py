@@ -1,14 +1,15 @@
 import sys
+import json
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QListWidget, QVBoxLayout,
                              QWidget, QHBoxLayout, QLineEdit, QPushButton, QGridLayout, QLabel, QListView,
                              QAbstractItemView, QMessageBox, QDialog, QDialogButtonBox, QTextEdit)
 from PyQt5.QtCore import Qt, QTimer, QAbstractListModel, QModelIndex
 from bs4 import BeautifulSoup
+HABITS_FILE = "habit_tracker_data.json"
 
-# Cria uma subclasse de QAbstractListModel, pra criar um modelo totalmente personalizado pra mostrar na seção da direita
+# Cria uma classe de QAbstractListModel, pra criar um modelo totalmente personalizado pra mostrar na seção da direita
 # PS: rowCount e data são nomes necessários para que o QAbstractListModel funcione.
 class ListViewModel(QAbstractListModel):
-
 
     def __init__(self, habitos = None):
         super().__init__()
@@ -57,9 +58,13 @@ class EditDialog(QDialog):
         mainlayout.addWidget(self.labeltitulo)
 
         # Definindo descrição a ser editada
+        # Criaremos uma QTextEdit
         self.text_edit = QTextEdit(self)
+        # Criamos uma variavel descrição, que vai usar a função da mainwindow get_description
         descricao = self.main_window.get_description()
+        # Setamos o texto da QTextEdit como a descrição que a função da mainwindow pegou
         self.text_edit.setText(descricao)
+        # Adicionamos o QTextEdit pro mainlayout
         mainlayout.addWidget(self.text_edit)
 
         # Botões de save e cancel
@@ -76,7 +81,6 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Habit Tracker")
         self.setGeometry(100, 150, 900, 600)
-
 
         #region Criando itens (Labels | Lists | Buttons)
 
@@ -168,8 +172,13 @@ class MainWindow(QMainWindow):
 
         # endregion
 
+        self.load()
+
         self.initUI()
 
+    def closeEvent(self, event):
+        self.save()
+        event.accept()
 
     def initUI(self):
 
@@ -215,7 +224,7 @@ class MainWindow(QMainWindow):
         "font-size: 24px; 
         font-weight: bold; 
         color: black;">
-        Exemplo de título
+        Bem-vindo ao HabitTracker!
         </p>
         <br>
         <p style=
@@ -223,7 +232,12 @@ class MainWindow(QMainWindow):
         color: lightgray;
         text-align: left;
         margin: 10px;">
-        Exemplo de descrição
+        Esse programa tem a finalidade de ajudar você a acompanhar, gerenciar e melhorar seus hábitos diários, 
+        tornando sua rotina mais produtiva.<br>
+        Defina seus hábitos, acompanhe seu progresso, e o tempo que você investiu neles!<br><br>
+        Vamos começar?<br><br>
+        Para adicionar um hábito, digite o nome desejado na caixa de texto ao canto inferior esquerdo da tela.
+        Após isso, clique em "Adicionar", e ele será adicionado automaticamente à lista de hábitos.
         </p>
         """
 
@@ -281,9 +295,6 @@ class MainWindow(QMainWindow):
 
 
     # region Todas as funções do programa
-
-
-
 
     # region Manipulação da label
 
@@ -421,7 +432,6 @@ class MainWindow(QMainWindow):
                     self.timer.start(1000)
                     # Timer iniciado
                     print(f"Timer iniciado para: {self.current_item}")
-                    break
         else:
             print("O item selecionado não é válido")
 
@@ -481,26 +491,23 @@ class MainWindow(QMainWindow):
 
     # Essa função é executada sempre que o botão Reiniciar ser clicado
     def reset_timer(self):
-        wrong_selection = False
+        found = False # Variável auxiliar pra ajudar a encontrar o hábito correto
 
         for habito in self.habitos:
             # Se tiver algum hábito com o tempo em andamento maior que um, prossegue
             if habito["actual_time"] >= 1:
-                # Se não tiver nenhum hábito com o nome do que tá selecionado
-                if habito["name"] != self.current_item:
-                    # Seleção errada é true
-                    wrong_selection = True
-                else:
+                # Se tiver algum hábito com o nome do que tá selecionado
+                if habito["name"] == self.current_item:
                     # Atualiza o actual time dele pra 0
                     habito["actual_time"] = 0
                     # Printa isso
                     print("Timer zerado monstramente.")
                     # Atualiza o modelo
                     self.model.layoutChanged.emit()
+                    found = True
                     break
-
         # Se apenas for seleção errada, mas achar um hábito
-        if wrong_selection:
+        if found == False:
             self.warningwrongselec("Por favor, selecione o hábito corretamente")
 
     # Essa função é executada sempre que o botão Parar/Zerar ser clicado
@@ -519,6 +526,32 @@ class MainWindow(QMainWindow):
                 self.timer.stop()
 
     # endregion
+
+    def save(self):
+        try:
+            with open(HABITS_FILE, "w") as file:
+                json.dump(self.habitos, file, indent=4)
+            print("Hábitos salvos com sucesso")
+        except Exception as e:
+            print(f"Erro ao salvar hábitos: {e}")
+
+    def load(self):
+        try:
+            with open(HABITS_FILE, "r") as file:
+                self.habitos = json.load(file)
+            print("Hábitos carregados com sucesso.")
+        except FileNotFoundError:
+            print("Arquivo não encontrado. Criando um...")
+            self.habitos = []
+        except Exception as e:
+            print(f"Erro ao carregar hábitos: {e}")
+
+        self.model = ListViewModel(self.habitos)
+        self.lista2.setModel(self.model)
+
+        self.lista.clear()
+        for habito in self.habitos:
+            self.lista.addItem(habito["name"])
 
     # region Função pop-up editar descrição
     def open_edit_dialog(self):
@@ -564,8 +597,6 @@ class MainWindow(QMainWindow):
     # endregion
 
 
-
-    #endregion
 
 def main():
     app = QApplication(sys.argv)
