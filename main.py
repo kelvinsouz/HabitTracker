@@ -69,11 +69,26 @@ class EditDialog(QDialog):
 
         # Botões de save e cancel
         self.button_box = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel, self)
-        self.button_box.accepted.connect(self.accept)
+        self.button_box.accepted.connect(self.save_description)
         self.button_box.rejected.connect(self.reject)
         mainlayout.addWidget(self.button_box)
-
         # endregion
+
+    def save_description(self):
+        novadesc = self.text_edit.toPlainText()
+
+        for habito in self.main_window.habitos:
+            if habito["name"] == self.item:
+                habito["description"] = novadesc
+                print(f"Nova descrição para '{self.item}': {novadesc}")
+                break
+        self.main_window.model.layoutChanged.emit()
+
+        itens_lista = self.main_window.lista.findItems(self.item, Qt.MatchExactly)
+        if itens_lista:
+            self.main_window.get_title_name(itens_lista[0])
+
+        self.accept()
 
 class MainWindow(QMainWindow):
 
@@ -98,35 +113,11 @@ class MainWindow(QMainWindow):
 
         #endregion
 
-        #region TEMPORARIO = Itens teste da lista 1
-
-        # Adicionando itens à lista 1
-        # self.lista.addItem("Teste #1")
-        # self.lista.addItem("Teste #2")
-        # self.lista.addItem("Teste #3")
-        # self.lista.addItem("LAYANINHA")
-
-        #endregion
-
         # region Criando self.habitos
 
         # Criando self.hábitos, que será usado no listviewmodel. Valores padrões passados como teste.
         self.habitos = [
-            # {"name": "Teste #4",
-            #  "status": "INATIVO",
-            #  "seconds_elapsed": 0,
-            #  "running": False,
-            #  "actual_time": 0,
-            #  "total_time": 0},
-            #
-            # {"name": "Teste #5",
-            #  "status": "INATIVO",
-            #  "seconds_elapsed": 0,
-            #  "actual_time": 0,
-            #  "running": False,
-            #  "total_time": 10},
-            #
-            # {"name": "LAYANINHA",
+            # {"name": "EXEMPLO",
             #  "status": "INATIVO",
             #  "seconds_elapsed": 0,
             #  "actual_time": 0,
@@ -165,7 +156,6 @@ class MainWindow(QMainWindow):
 
         # region Funções do timer
 
-        # Criando funções para o timer
         self.current_item = None                        # Armazena o nome da atividade atual
         self.timer = QTimer()                           # Dispara a cada 1s (Configurado mais adiante)
         self.timer.timeout.connect(self.update_timer)   # Quando o timer atingir o tempo configurado, executa a função
@@ -173,12 +163,7 @@ class MainWindow(QMainWindow):
         # endregion
 
         self.load()
-
         self.initUI()
-
-    def closeEvent(self, event):
-        self.save()
-        event.accept()
 
     def initUI(self):
 
@@ -292,8 +277,6 @@ class MainWindow(QMainWindow):
 
         #endregion
 
-
-
     # region Todas as funções do programa
 
     # region Manipulação da label
@@ -301,11 +284,18 @@ class MainWindow(QMainWindow):
     # Toda vez que houver um double-clique na lista à esquerda, essa função será executada..
     def get_title_name(self, item):
 
+        print(self.habitos)
+        descricaohabito = None
+
         # Pega o nome do que foi double clickado
         nomeatividade = item.text()
-
         # Printa oque foi double clicado
         print(f"{nomeatividade}")
+
+        # Loopa, se tiver um habito com o nome do que ta selecionado, muda a descricao pra descricao local dele
+        for habito in self.habitos:
+            if habito["name"] == nomeatividade:
+                descricaohabito = habito["description"]
 
         # Faz um novo título com oque foi double clickado
         updatetitulo = f"""
@@ -321,7 +311,7 @@ class MainWindow(QMainWindow):
         color: lightgray;
         text-align: left;
         margin: 10px;">
-        O título e a descrição foram atualizados.
+        {descricaohabito}
         </p>
         """
 
@@ -367,7 +357,8 @@ class MainWindow(QMainWindow):
                     "seconds_elapsed": 0,
                     "running": False,
                     "actual_time": 0,
-                    "total_time": 0
+                    "total_time": 0,
+                    "description": "Exemplo de descrição"
                 }
             )
             # Se após adicionar esse hábito, o tamanho de self.habitos for 1, significa que esse é o
@@ -527,6 +518,7 @@ class MainWindow(QMainWindow):
 
     # endregion
 
+    # region Funções Save/Load
     def save(self):
         try:
             with open(HABITS_FILE, "w") as file:
@@ -552,6 +544,8 @@ class MainWindow(QMainWindow):
         self.lista.clear()
         for habito in self.habitos:
             self.lista.addItem(habito["name"])
+
+    # endregion
 
     # region Função pop-up editar descrição
     def open_edit_dialog(self):
@@ -591,12 +585,18 @@ class MainWindow(QMainWindow):
 
     # endregion
 
+    # region Função fechar
+    def closeEvent(self, event):
+        for habito in self.habitos:
+            if habito["status"] == "ATIVO":
+                habito["status"] = "INATIVO"
 
-
-
+        self.save()
+        event.accept()
     # endregion
 
 
+    # endregion
 
 def main():
     app = QApplication(sys.argv)
