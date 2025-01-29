@@ -1,11 +1,11 @@
 [
     {
-        "name": "Noruegu\u00eas",
+        "name": "Academia target",
         "status": "INATIVO",
-        "seconds_elapsed": 0,
-        "running": false,
-        "actual_time": 0,
-        "total_time": 0,
-        "description": "Gostaria de aprender noruegu\u00eas para um dia conseguir me mudar para Noruega, o meu pa\u00eds dos sonhos. >:D"
+        "seconds_elapsed": 28,
+        "running": true,
+        "actual_time": 28,
+        "total_time": 28,
+        "description": "Eu gosto de me exercitar, por isso fa\u00e7o academia"
     }
 ]

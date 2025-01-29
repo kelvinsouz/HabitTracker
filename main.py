@@ -167,6 +167,35 @@ class MainWindow(QMainWindow):
 
     def initUI(self):
 
+        QApplication.instance().setStyleSheet("""
+            QMainWindow{
+            background-color: #1E1E1E;
+            }
+            
+            QPushButton{
+            background-color: #494949;
+            color: #FFFFFF;
+            font-family: Calibri;
+            font-size: 14px;
+            border: 1px solid #2d2d2d; 
+            border-radius: 6px;
+            padding: 2px;
+            }
+            
+            QPushButton:hover{
+            background-color: #616161;
+            }
+            
+            QPushButton:pressed{
+            background-color: #7a7a7a
+            }
+        
+        """)
+
+        self.botaoeditdesc.setStyleSheet("""
+        font-size: 12px;        
+        """)
+
         # region Cleanar seleções
 
         # Definindo funções ao mudar uma seleção de uma lista
@@ -276,6 +305,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(widgetcentral)
 
         #endregion
+
 
     # region Todas as funções do programa
 
