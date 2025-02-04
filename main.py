@@ -38,7 +38,7 @@ class ListViewModel(QAbstractListModel):
 class EditDialog(QDialog):
 
     def __init__(self, parent=None, main_window =None, item=None):
-        super().__init__(parent)
+        super().__init__(None, Qt.Dialog)
 
         # region Janela - Editar Descrição
 
@@ -99,7 +99,7 @@ class MainWindow(QMainWindow):
 
         #region Criando itens (Labels | Lists | Buttons)
 
-        self.labelprincipal = QLabel("Aqui ficará as atividades", self)
+        self.labelprincipal = QLabel(self)
         self.listatexto = QLineEdit(self)
         self.lista = QListWidget(self)
         self.lista2 = QListView(self)
@@ -138,8 +138,8 @@ class MainWindow(QMainWindow):
         # region Definindo os tamanhos dos botoes
 
         # Setando size de todos
-        self.botaoadicionar.setFixedSize(150,25)
-        self.botaodeletar.setFixedSize(150,25)
+        self.botaoadicionar.setFixedSize(175,25)
+        self.botaodeletar.setFixedSize(175,25)
 
         self.botaoiniciar.setFixedSize(170,50)
         self.botaopausar.setFixedSize(170, 50)
@@ -147,9 +147,9 @@ class MainWindow(QMainWindow):
         self.botaoparar.setFixedSize(170, 50)
         self.botaoeditdesc.setFixedSize(100, 50)
 
-        self.lista.setFixedWidth(150)
-        self.lista2.setFixedWidth(300)
-        self.listatexto.setFixedSize(150, 30)
+        self.lista.setFixedWidth(175)
+        self.lista2.setFixedWidth(250)
+        self.listatexto.setFixedSize(175, 30)
         self.labelprincipal.setFixedWidth(self.width())
 
         # endregion
@@ -167,34 +167,60 @@ class MainWindow(QMainWindow):
 
     def initUI(self):
 
+        #region Personalização de cores e estilos do programa
         QApplication.instance().setStyleSheet("""
             QMainWindow{
-            background-color: #1E1E1E;
+            background-color: #263238;
             }
             
-            QPushButton{
-            background-color: #494949;
+            QMainWindow QLabel {
+            background-color: white;
+            border: 1px solid white;
+            border-radius: 6px;
+            font-weight: bold; 
+            word-wrap: break-word;    
+            }
+            
+            QMainWindow QPushButton{
+            background-color: #00897B;
             color: #FFFFFF;
             font-family: Calibri;
             font-size: 14px;
-            border: 1px solid #2d2d2d; 
+            border: 1px solid #02756a; 
             border-radius: 6px;
             padding: 2px;
             }
             
-            QPushButton:hover{
+            QMainWindow QPushButton:hover{
             background-color: #616161;
             }
             
-            QPushButton:pressed{
+            QMainWindow QPushButton:pressed{
             background-color: #7a7a7a
             }
-        
+            
+            QLineEdit {
+            font-family: Calibri;
+            font-size: 14px;
+            border: 1px solid white; 
+            border-radius: 6px;
+            padding: 2px;
+            }
+            
+            QListView {
+            font-family: Calibri;
+            font-size: 14px;
+            border: 1px solid white; 
+            border-radius: 3px
+            }      
+                
         """)
 
         self.botaoeditdesc.setStyleSheet("""
         font-size: 12px;        
         """)
+
+        #endregion
 
         # region Cleanar seleções
 
@@ -218,47 +244,11 @@ class MainWindow(QMainWindow):
 
         # endregion
 
-        # region Texto padrão da label + Estilo
+        # region Configurações da Label principal + Texto padrão
 
-        # Style da Label
-        self.labelprincipal.setStyleSheet("""
-            background-color: white;
-            color: black;
-            border: 2px solid black;
-            border-radius: 5px;
-            font-size: 20px;
-            font-weight: bold; 
-            word-wrap: break-word;        
-        """)
-
-
-        # Texto padrão da label
-        textopadrao = f"""
-        <p style=
-        "font-size: 24px; 
-        font-weight: bold; 
-        color: black;">
-        Bem-vindo ao HabitTracker!
-        </p>
-        <br>
-        <p style=
-        "font-size: 16px; 
-        color: lightgray;
-        text-align: left;
-        margin: 10px;">
-        Esse programa tem a finalidade de ajudar você a acompanhar, gerenciar e melhorar seus hábitos diários, 
-        tornando sua rotina mais produtiva.<br>
-        Defina seus hábitos, acompanhe seu progresso, e o tempo que você investiu neles!<br><br>
-        Vamos começar?<br><br>
-        Para adicionar um hábito, digite o nome desejado na caixa de texto ao canto inferior esquerdo da tela.
-        Após isso, clique em "Adicionar", e ele será adicionado automaticamente à lista de hábitos.
-        </p>
-        """
-
-        # Setando texto da label padrão.
-        self.labelprincipal.setText(textopadrao)
         self.labelprincipal.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
         self.labelprincipal.setWordWrap(True)
+        self.resetlabel()
 
         #endregion
 
@@ -365,6 +355,31 @@ class MainWindow(QMainWindow):
         else:
             print("Nada mano. Foi mal")
 
+    def resetlabel(self):
+        # Texto padrão da label
+        textopadrao = f"""
+        <p style=
+        "font-size: 24px; 
+        font-weight: bold; 
+        color: black;">
+        Bem-vindo ao HabitTracker!
+        </p>
+        <br>
+        <p style=
+        "font-size: 16px; 
+        color: lightgray;
+        text-align: left;
+        margin: 10px;">
+        Esse programa tem a finalidade de ajudar você a acompanhar, gerenciar e melhorar seus hábitos diários, 
+        tornando sua rotina mais produtiva. <br>
+        Defina seus hábitos, acompanhe seu progresso, e o tempo que você investiu neles! <br><br>
+        Vamos começar? <br><br>
+        Para adicionar um hábito, digite o nome desejado na caixa de texto ao canto inferior esquerdo da tela.
+        Após isso, clique em "Adicionar", e ele será adicionado automaticamente à lista de hábitos.
+        </p>
+        """
+        # Setando texto da label padrão.
+        self.labelprincipal.setText(textopadrao)
 
     # endregion
 
@@ -388,7 +403,7 @@ class MainWindow(QMainWindow):
                     "running": False,
                     "actual_time": 0,
                     "total_time": 0,
-                    "description": "Exemplo de descrição"
+                    "description": "Atualmente não há uma descrição para essa tarefa.\nVocê pode customizar isso clicando no botão 'Editar Descrição' no canto inferior direito."
                 }
             )
             # Se após adicionar esse hábito, o tamanho de self.habitos for 1, significa que esse é o
@@ -430,6 +445,7 @@ class MainWindow(QMainWindow):
             linhalista1 = self.lista.row(item)
             # Deleta também
             self.lista.takeItem(linhalista1)
+            self.resetlabel()
 
     # endregion
 
@@ -534,17 +550,20 @@ class MainWindow(QMainWindow):
     # Essa função é executada sempre que o botão Parar/Zerar ser clicado
     def fullstop(self):
         for habito in self.habitos:
-            # Se não tiver nenhum hábito com o nome do que tá selecionado
-            if habito["name"] == self.current_item:
-                # Performa essas mudanças e para o timer
-                habito["running"] = False
-                habito["status"] = "INATIVO"
-                habito["actual_time"] = 0
-                print("ZERADO")
-                self.model.layoutChanged.emit()
-                break
-            if habito["name"] == self.current_item and habito["running"]:
-                self.timer.stop()
+            # Se tiver um hábito com o nome do que tá selecionado
+             if habito["name"] == self.current_item:
+                if self.warningconditional("Tem certeza que deseja zerar esse hábito?\nEssa ação não pode ser desfeita!"):
+                    # Performa essas mudanças e para o timer
+                    habito["running"] = False
+                    habito["status"] = "INATIVO"
+                    habito["actual_time"] = 0
+                    habito["total_time"] = 0
+                    habito["seconds_elapsed"] = 0
+                    print("ZERADO")
+                    self.model.layoutChanged.emit()
+                    print(self.habitos)
+                if habito["name"] == self.current_item and habito["running"]:
+                    self.timer.stop()
 
     # endregion
 
@@ -598,6 +617,19 @@ class MainWindow(QMainWindow):
         msgbox.setText(text)
         msgbox.setStandardButtons(QMessageBox.Ok)
         msgbox.exec_()
+
+    # Mensagem de aviso condicional
+    def warningconditional(self, text):
+        msgbox = QMessageBox()
+        msgbox.setIcon(QMessageBox.Warning)
+        msgbox.setWindowTitle("Aviso")
+        msgbox.setText(text)
+        msgbox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        resposta = msgbox.exec_()
+        if resposta == QMessageBox.Yes:
+            return True
+        else:
+            return False
 
     # endregion
 
