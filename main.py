@@ -4,6 +4,8 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QListWidget, QVBoxLayout
                              QWidget, QHBoxLayout, QLineEdit, QPushButton, QGridLayout, QLabel, QListView,
                              QAbstractItemView, QMessageBox, QDialog, QDialogButtonBox, QTextEdit)
 from PyQt5.QtCore import Qt, QTimer, QAbstractListModel, QModelIndex
+from PyQt5.QtGui import QFontDatabase, QFont
+
 from bs4 import BeautifulSoup
 HABITS_FILE = "habit_tracker_data.json"
 
@@ -15,6 +17,13 @@ class ListViewModel(QAbstractListModel):
         super().__init__()
         self.habitos = habitos or []
 
+
+    def formatar_tempo(self, segundos):
+        horas = segundos // 3600
+        minutos = (segundos % 3600) // 60
+        segundos = segundos % 60
+        tempoformatado = f"{horas}h {minutos}m {segundos}s" if horas else f"{minutos}m {segundos}s" if minutos else f"{segundos}s"
+        return tempoformatado
 
     # Função necessária para exibir os dados numa célula da lista QListView
     # É passado 2 parametros, index (posição), e role (um tipo de dado).
@@ -28,8 +37,8 @@ class ListViewModel(QAbstractListModel):
             # E aí o hábito será exibido
             return (f"{habito['name']}\n"
                     f"Estado: {habito['status']}\n"
-                    f"Tempo em andamento: {habito['actual_time']}s\n"
-                    f"Tempo total: {habito['total_time']}s")
+                    f"Tempo em andamento: {self.formatar_tempo(habito['actual_time'])}\n"
+                    f"Tempo total: {self.formatar_tempo(habito['total_time'])}\n")
 
     # Apenas diz ao PyQt5 quantas linhas estão presentes
     def rowCount(self, index=QModelIndex()):
@@ -161,6 +170,7 @@ class MainWindow(QMainWindow):
         self.timer.timeout.connect(self.update_timer)   # Quando o timer atingir o tempo configurado, executa a função
 
         # endregion
+
 
         self.load()
         self.initUI()
@@ -304,7 +314,13 @@ class MainWindow(QMainWindow):
     # Toda vez que houver um double-clique na lista à esquerda, essa função será executada..
     def get_title_name(self, item):
 
-        print(self.habitos)
+        font_path = "Inter-VariableFont_opsz,wght.ttf"
+        font_id = QFontDatabase.addApplicationFont(font_path)
+        if font_id != -1:
+            interfont = QFontDatabase.applicationFontFamilies(font_id)[0]
+        else:
+            interfont = "Arial"
+
         descricaohabito = None
 
         # Pega o nome do que foi double clickado
@@ -321,14 +337,17 @@ class MainWindow(QMainWindow):
         updatetitulo = f"""
         <p style=
         "font-size: 24px; 
-        font-weight: bold; 
+        font-weight: 600; 
+        font-family: {interfont};
         color: black;">
         {nomeatividade}
         </p>
         <br>
         <p style=
-        "font-size: 16px; 
-        color: lightgray;
+        "font-size: 20px; 
+        font-weight: 200;
+        font-family: {interfont};
+        color: #212121;
         text-align: left;
         margin: 10px;">
         {descricaohabito}
@@ -357,17 +376,28 @@ class MainWindow(QMainWindow):
 
     def resetlabel(self):
         # Texto padrão da label
+
+        font_path = "Inter-VariableFont_opsz,wght.ttf"
+        font_id = QFontDatabase.addApplicationFont(font_path)
+        if font_id != -1:
+            interfont = QFontDatabase.applicationFontFamilies(font_id)[0]
+        else:
+            interfont = "Arial"
+
         textopadrao = f"""
         <p style=
         "font-size: 24px; 
-        font-weight: bold; 
+        font-weight: 600;
+        font-family: {interfont}; 
         color: black;">
         Bem-vindo ao HabitTracker!
         </p>
         <br>
         <p style=
-        "font-size: 16px; 
-        color: lightgray;
+        "font-size: 20px; 
+        font-weight: 200;
+        color: #424242;
+        font-family: {interfont};
         text-align: left;
         margin: 10px;">
         Esse programa tem a finalidade de ajudar você a acompanhar, gerenciar e melhorar seus hábitos diários, 
