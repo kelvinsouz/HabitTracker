@@ -1,103 +1,10 @@
-import sys
-import json
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QListWidget, QVBoxLayout,
-                             QWidget, QHBoxLayout, QLineEdit, QPushButton, QGridLayout, QLabel, QListView,
-                             QAbstractItemView, QMessageBox, QDialog, QDialogButtonBox, QTextEdit)
-from PyQt5.QtCore import Qt, QTimer, QAbstractListModel, QModelIndex
-from PyQt5.QtGui import QFontDatabase, QFont
-
+from PyQt5.QtWidgets import QMainWindow, QLabel, QListWidget, QListView, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QLineEdit, QApplication, QMessageBox
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QFontDatabase
+from models import ListViewModel
+from habit_manager import load, save
+from dialogs import EditDialog
 from bs4 import BeautifulSoup
-HABITS_FILE = "habit_tracker_data.json"
-
-# Cria uma classe de QAbstractListModel, pra criar um modelo totalmente personalizado pra mostrar na seção da direita
-# PS: rowCount e data são nomes necessários para que o QAbstractListModel funcione.
-class ListViewModel(QAbstractListModel):
-
-    def __init__(self, habitos = None):
-        super().__init__()
-        self.habitos = habitos or []
-
-
-    def formatar_tempo(self, segundos):
-        horas = segundos // 3600
-        minutos = (segundos % 3600) // 60
-        segundos = segundos % 60
-        tempoformatado = f"{horas}h {minutos}m {segundos}s" if horas else f"{minutos}m {segundos}s" if minutos else f"{segundos}s"
-        return tempoformatado
-
-    # Função necessária para exibir os dados numa célula da lista QListView
-    # É passado 2 parametros, index (posição), e role (um tipo de dado).
-    # Se o dado for um Qt.DisplayRole, dará continuidade...
-    def data(self, index, role):
-
-        if role == Qt.DisplayRole:
-            # Ferramenta que acessa self.habitos (um dicionário), checando cada index e pegando ele.
-            habito = self.habitos[index.row()]
-            # O valor do dicionário que a função hábito pegou será retornado neste formato abaixo
-            # E aí o hábito será exibido
-            return (f"{habito['name']}\n"
-                    f"Estado: {habito['status']}\n"
-                    f"Tempo em andamento: {self.formatar_tempo(habito['actual_time'])}\n"
-                    f"Tempo total: {self.formatar_tempo(habito['total_time'])}\n")
-
-    # Apenas diz ao PyQt5 quantas linhas estão presentes
-    def rowCount(self, index=QModelIndex()):
-        return len(self.habitos)
-
-class EditDialog(QDialog):
-
-    def __init__(self, parent=None, main_window =None, item=None):
-        super().__init__(None, Qt.Dialog)
-
-        # region Janela - Editar Descrição
-
-        # Lá embaixo, no open dialog, eu passei a janela principal MainWindow, pra conseguir usar as funções dela
-        self.main_window = main_window
-        # No open dialog eu também passei o self.current_item pra ser esse 'item'.
-        self.item = item
-
-        # Definindo atributos da window
-        self.setWindowTitle(f"Editar descrição de '{item}'")
-        self.setGeometry(200,200,400,300)
-
-        mainlayout = QVBoxLayout(self)
-
-        # Definindo Título (da label)
-        self.labeltitulo = QLabel(f"Aqui você pode editar a descrição de sua atividade como quiser.")
-        mainlayout.addWidget(self.labeltitulo)
-
-        # Definindo descrição a ser editada
-        # Criaremos uma QTextEdit
-        self.text_edit = QTextEdit(self)
-        # Criamos uma variavel descrição, que vai usar a função da mainwindow get_description
-        descricao = self.main_window.get_description()
-        # Setamos o texto da QTextEdit como a descrição que a função da mainwindow pegou
-        self.text_edit.setText(descricao)
-        # Adicionamos o QTextEdit pro mainlayout
-        mainlayout.addWidget(self.text_edit)
-
-        # Botões de save e cancel
-        self.button_box = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel, self)
-        self.button_box.accepted.connect(self.save_description)
-        self.button_box.rejected.connect(self.reject)
-        mainlayout.addWidget(self.button_box)
-        # endregion
-
-    def save_description(self):
-        novadesc = self.text_edit.toPlainText()
-
-        for habito in self.main_window.habitos:
-            if habito["name"] == self.item:
-                habito["description"] = novadesc
-                print(f"Nova descrição para '{self.item}': {novadesc}")
-                break
-        self.main_window.model.layoutChanged.emit()
-
-        itens_lista = self.main_window.lista.findItems(self.item, Qt.MatchExactly)
-        if itens_lista:
-            self.main_window.get_title_name(itens_lista[0])
-
-        self.accept()
 
 class MainWindow(QMainWindow):
 
@@ -106,12 +13,24 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Habit Tracker")
         self.setGeometry(100, 150, 900, 600)
 
-        #region Criando itens (Labels | Lists | Buttons)
+        self.habitos = load()
+        self.model = ListViewModel(self.habitos)
+
+        self.current_item = None                        # Armazena o nome da atividade atual
+        self.timer = QTimer()                           # Dispara a cada 1s (Configurado mais adiante)
+        self.timer.timeout.connect(self.update_timer)   # Quando o timer atingir o tempo configurado, executa a função
+
+        self.initUI()
+
+    def initUI(self):
+
+        # region Criando listas e botões, setando sizes
 
         self.labelprincipal = QLabel(self)
         self.listatexto = QLineEdit(self)
         self.lista = QListWidget(self)
         self.lista2 = QListView(self)
+        self.lista2.setModel(self.model)
         self.botaoadicionar = QPushButton("Adicionar...")
         self.botaodeletar = QPushButton("Deletar...")
         self.botaoiniciar = QPushButton("Iniciar")
@@ -120,33 +39,6 @@ class MainWindow(QMainWindow):
         self.botaoparar = QPushButton("Parar / Zerar")
         self.botaoeditdesc = QPushButton("Editar descrição...")
 
-        #endregion
-
-        # region Criando self.habitos
-
-        # Criando self.hábitos, que será usado no listviewmodel. Valores padrões passados como teste.
-        self.habitos = [
-            # {"name": "EXEMPLO",
-            #  "status": "INATIVO",
-            #  "seconds_elapsed": 0,
-            #  "actual_time": 0,
-            #  "running": False,
-            #  "total_time": 0}
-        ]
-
-        # endregion
-
-        # region Lista 2 --> ListViewModel
-
-        # Setando o modelo da lista 2: O modelo é um listviewmodel, usando self.habitos
-        self.model = ListViewModel(self.habitos)
-        self.lista2.setModel(self.model)
-
-        # endregion
-
-        # region Definindo os tamanhos dos botoes
-
-        # Setando size de todos
         self.botaoadicionar.setFixedSize(175,25)
         self.botaodeletar.setFixedSize(175,25)
 
@@ -163,86 +55,8 @@ class MainWindow(QMainWindow):
 
         # endregion
 
-        # region Funções do timer
+        # region Definindo função dos botões e listas
 
-        self.current_item = None                        # Armazena o nome da atividade atual
-        self.timer = QTimer()                           # Dispara a cada 1s (Configurado mais adiante)
-        self.timer.timeout.connect(self.update_timer)   # Quando o timer atingir o tempo configurado, executa a função
-
-        # endregion
-
-
-        self.load()
-        self.initUI()
-
-    def initUI(self):
-
-        #region Personalização de cores e estilos do programa
-        QApplication.instance().setStyleSheet("""
-            QMainWindow{
-            background-color: #263238;
-            }
-            
-            QMainWindow QLabel {
-            background-color: white;
-            border: 1px solid white;
-            border-radius: 6px;
-            font-weight: bold; 
-            word-wrap: break-word;    
-            }
-            
-            QMainWindow QPushButton{
-            background-color: #00897B;
-            color: #FFFFFF;
-            font-family: Calibri;
-            font-size: 14px;
-            border: 1px solid #02756a; 
-            border-radius: 6px;
-            padding: 2px;
-            }
-            
-            QMainWindow QPushButton:hover{
-            background-color: #616161;
-            }
-            
-            QMainWindow QPushButton:pressed{
-            background-color: #7a7a7a
-            }
-            
-            QLineEdit {
-            font-family: Calibri;
-            font-size: 14px;
-            border: 1px solid white; 
-            border-radius: 6px;
-            padding: 2px;
-            }
-            
-            QListView {
-            font-family: Calibri;
-            font-size: 14px;
-            border: 1px solid white; 
-            border-radius: 3px
-            }      
-                
-        """)
-
-        self.botaoeditdesc.setStyleSheet("""
-        font-size: 12px;        
-        """)
-
-        #endregion
-
-        # region Cleanar seleções
-
-        # Definindo funções ao mudar uma seleção de uma lista
-        self.lista.selectionModel().selectionChanged.connect(self.lista2_selecao_clear)
-        self.lista2.selectionModel().selectionChanged.connect(self.lista_selecao_clear)
-
-        # endregion
-
-        # region Funções de botões e double click
-
-        # Definindo funções aos double-click da lista, e ao click dos botões
         self.lista.itemDoubleClicked.connect(self.get_title_name)
         self.botaoadicionar.clicked.connect(self.addlistaitem)
         self.botaodeletar.clicked.connect(self.deletelistaitem)
@@ -252,15 +66,11 @@ class MainWindow(QMainWindow):
         self.botaoparar.clicked.connect(self.fullstop)
         self.botaoeditdesc.clicked.connect(self.open_edit_dialog)
 
+        self.lista.clear()
+        for habito in self.habitos:
+            self.lista.addItem(habito["name"])
+
         # endregion
-
-        # region Configurações da Label principal + Texto padrão
-
-        self.labelprincipal.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
-        self.labelprincipal.setWordWrap(True)
-        self.resetlabel()
-
-        #endregion
 
         #region Manipulação de layouts
 
@@ -306,6 +116,73 @@ class MainWindow(QMainWindow):
 
         #endregion
 
+        # region Cleanar seleções
+
+        # Definindo funções ao mudar uma seleção de uma lista
+        self.lista.selectionModel().selectionChanged.connect(self.lista2_selecao_clear)
+        self.lista2.selectionModel().selectionChanged.connect(self.lista_selecao_clear)
+
+        # endregion
+
+        # region Personalização de cores e estilos do programa
+        QApplication.instance().setStyleSheet("""
+            QMainWindow{
+            background-color: #263238;
+            }
+
+            QMainWindow QLabel {
+            background-color: white;
+            border: 1px solid white;
+            border-radius: 6px;
+            font-weight: bold; 
+            word-wrap: break-word;    
+            }
+
+            QMainWindow QPushButton{
+            background-color: #00897B;
+            color: #FFFFFF;
+            font-family: Calibri;
+            font-size: 14px;
+            border: 1px solid #02756a; 
+            border-radius: 6px;
+            padding: 2px;
+            }
+
+            QMainWindow QPushButton:hover{
+            background-color: #006359;
+            }
+
+            QMainWindow QPushButton:pressed{
+            background-color: #013d37
+            }
+
+            QLineEdit {
+            font-family: Calibri;
+            font-size: 14px;
+            border: 1px solid white; 
+            border-radius: 6px;
+            padding: 2px;
+            }
+
+            QListView {
+            font-family: Calibri;
+            font-size: 14px;
+            border: 1px solid white; 
+            border-radius: 3px
+            }      
+
+        """)
+
+        self.botaoeditdesc.setStyleSheet("""
+        font-size: 12px;        
+        """)
+
+        self.labelprincipal.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
+        self.labelprincipal.setWordWrap(True)
+        self.resetlabel()
+
+        #endregion
+
 
     # region Todas as funções do programa
 
@@ -325,8 +202,6 @@ class MainWindow(QMainWindow):
 
         # Pega o nome do que foi double clickado
         nomeatividade = item.text()
-        # Printa oque foi double clicado
-        print(f"{nomeatividade}")
 
         # Loopa, se tiver um habito com o nome do que ta selecionado, muda a descricao pra descricao local dele
         for habito in self.habitos:
@@ -369,10 +244,9 @@ class MainWindow(QMainWindow):
 
         if descricao_tag:
             descricao_texto = descricao_tag.get_text(strip=True)
-            print(f"Descrição: {descricao_texto}")
             return descricao_texto
         else:
-            print("Nada mano. Foi mal")
+            print("Nenhuma descrição encontrada")
 
     def resetlabel(self):
         # Texto padrão da label
@@ -415,7 +289,6 @@ class MainWindow(QMainWindow):
 
     # region Funções caixa de texto
 
-
     # Toda vez que houver um clique no botão adicionar, essa função será executada.
     def addlistaitem(self):
         # Pega o texto que o usuário digitou na caixa de texto. Strip apaga os espaços
@@ -447,7 +320,6 @@ class MainWindow(QMainWindow):
                 # Se tiver mais de 1 item, só precisa atualizar mesmo
                 self.model.layoutChanged.emit()
             self.listatexto.clear()
-            print(self.habitos)
 
     # Toda vez que houver um clique no botão deletar, essa função será executada.
     def deletelistaitem(self):
@@ -466,7 +338,6 @@ class MainWindow(QMainWindow):
                         habito["running"] = False
                         habito["status"] = "INATIVO"
                         self.timer.stop()
-                        print("A atividade estava ativa antes de deletá-la.\nParando o timer antes do delete...")
                     # Deleta da lista 2
                     del self.habitos[i]
                     self.model.layoutChanged.emit()
@@ -597,35 +468,6 @@ class MainWindow(QMainWindow):
 
     # endregion
 
-    # region Funções Save/Load
-    def save(self):
-        try:
-            with open(HABITS_FILE, "w") as file:
-                json.dump(self.habitos, file, indent=4)
-            print("Hábitos salvos com sucesso")
-        except Exception as e:
-            print(f"Erro ao salvar hábitos: {e}")
-
-    def load(self):
-        try:
-            with open(HABITS_FILE, "r") as file:
-                self.habitos = json.load(file)
-            print("Hábitos carregados com sucesso.")
-        except FileNotFoundError:
-            print("Arquivo não encontrado. Criando um...")
-            self.habitos = []
-        except Exception as e:
-            print(f"Erro ao carregar hábitos: {e}")
-
-        self.model = ListViewModel(self.habitos)
-        self.lista2.setModel(self.model)
-
-        self.lista.clear()
-        for habito in self.habitos:
-            self.lista.addItem(habito["name"])
-
-    # endregion
-
     # region Função pop-up editar descrição
     def open_edit_dialog(self):
         item = self.current_item
@@ -679,26 +521,9 @@ class MainWindow(QMainWindow):
 
     # region Função fechar
     def closeEvent(self, event):
-        for habito in self.habitos:
-            if habito["status"] == "ATIVO":
-                habito["status"] = "INATIVO"
-
-        self.save()
+        save(self.habitos)
         event.accept()
     # endregion
 
 
     # endregion
-
-def main():
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec_())
-
-if __name__ == '__main__':
-    main()
-
-    # def resizeEvent(self, event):   # Caso o usuário maximize a tela, vai ter a altura da tela
-    #     self.lista.setGeometry(0, 0, 150, self.height())
-    #     self.lista2.setGeometry(self.width() - 150, 0, 150, self.height())
